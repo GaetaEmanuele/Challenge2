@@ -3,12 +3,12 @@
 namespace algebra {
 
     template <typename T>
-    SparseMatrix<T>::SparseMatrix() : numRows(0), numCols(0), isCompressed(false) {
+    Matrix<T,StorageOrder::RowMajor>::Matrix() : numRows(0), numCols(0), isCompressed(false) {
         // Constructor without initialize List
     }
 
     template <typename T>
-    SparseMatrix<T>::SparseMatrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList)
+    Matrix<T,StorageOrder::RowMajor>::Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList)
         : numRows(0), numCols(0), isCompressed(false) {
         // Constructor with initializer list of non zero elem
          for (const auto& tuple : initList) {
@@ -45,7 +45,7 @@ namespace algebra {
     }*/
     // Const operator() to access elements in a compressed or uncompressed matrix
     template <typename T>
-    T SparseMatrix<T>::operator()(std::size_t row, std::size_t col) const {
+    T Matrix<T,StorageOrder::RowMajor>::operator()(std::size_t row, std::size_t col) const {
         if (row < numRows && col < numCols) {
                 if (isCompressed) {
                     // Access element in compressed matrix
@@ -66,7 +66,7 @@ namespace algebra {
     }
      // Non-const operator() to modify elements in a compressed or uncompressed matrix
     template <typename T>
-    T& SparseMatrix<T>::operator()(std::size_t row, std::size_t col) {
+    T& Matrix<T,StorageOrder::RowMajor>::operator()(std::size_t row, std::size_t col) {
         if (isCompressed) {
         // Check if the element exists and is non-zero in the compressed matrix
             if (row < numRows && col < numCols && compressedMatrix[row][col] != 0) {
@@ -84,9 +84,9 @@ namespace algebra {
     }
     // Function to compress the sparse matrix representation (const-correct version)
     template <typename T>
-    void SparseMatrix<T>::compress() const {
+    void Matrix<T,StorageOrder::RowMajor>::compress() const {
         if (!isCompressed) {
-            auto& self = const_cast<SparseMatrix<T>&>(*this); // Cast away constness
+            auto& self = const_cast<Matrix<T,StorageOrder::RowMajor>&>(*this); // Cast away constness
 
             // Initialize the compressed matrix with zeros
             self.compressedMatrix.assign(numRows, std::vector<T>(numCols, 0));
@@ -109,7 +109,7 @@ namespace algebra {
 
     // Function to uncompress the sparse matrix representation
     template <typename T>
-    void SparseMatrix<T>::uncompress() {
+    void Matrix<T,StorageOrder::RowMajor>::uncompress() {
         if (!isCompressed) {
                 std::cerr << "Error: Matrix is not compressed. Cannot uncompress." << std::endl;
                 return;
@@ -133,7 +133,7 @@ namespace algebra {
 
     // Function to perform matrix-vector multiplication
     template <typename T>
-    std::vector<T> SparseMatrix<T>::matrixVectorProduct(const std::vector<T>& vec) const {
+    std::vector<T> Matrix<T,StorageOrder::RowMajor>::matrixVectorProduct(const std::vector<T>& vec) const {
         if (!isCompressed) {compress();}
                 // Perform matrix-vector product using compressed representation
                 std::vector<T> result(numRows, 0);
@@ -146,7 +146,7 @@ namespace algebra {
     }
     // Function to print the matrix (supports both compressed and uncompressed)
     template <typename T>
-    void SparseMatrix<T>::print() const {
+    void Matrix<T,StorageOrder::RowMajor>::print() const {
         if (isCompressed) {
                 // Print the compressed matrix
                 for (std::size_t i = 0; i < numRows; ++i) {

@@ -3,7 +3,7 @@
 
 int main() {
     // Create a sparse matrix with initial non-zero elements
-    algebra::SparseMatrix<double> mat{
+    algebra::Matrix<double,algebra::StorageOrder::RowMajor> mat{
         {0, 0, 1.2},
         {1, 2, -3.4},
         {2, 1, 5.6}
