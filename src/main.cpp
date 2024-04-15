@@ -1,6 +1,5 @@
 #include <iostream>
 #include "SparseMatrix.hpp"  // Include the header file with SparseMatrix implementation
-
 int main() {
     // Create a sparse matrix with initial non-zero elements
     algebra::Matrix<double,algebra::StorageOrder::RowMajor> mat{
@@ -49,7 +48,7 @@ int main() {
 
     // Perform matrix-vector multiplication
     std::vector<double> vec{1.0, 2.0, 3.0};
-    auto result = mat.matrixVectorProduct(vec);
+    auto result = mat * vec;
 
     // Print the result of matrix-vector product
     std::cout << "Result of Matrix-Vector Product:\n";

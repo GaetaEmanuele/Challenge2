@@ -132,18 +132,19 @@ namespace algebra {
     }
 
     // Function to perform matrix-vector multiplication
-    template <typename T>
-    std::vector<T> Matrix<T,StorageOrder::RowMajor>::matrixVectorProduct(const std::vector<T>& vec) const {
-        if (!isCompressed) {compress();}
+   /* template <typename T>
+    std::vector<T> operator*(const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec){
+    //std::vector<T> Matrix<T,StorageOrder::RowMajor>::matrixVectorProduct(const std::vector<T>& vec) const {
+        if (!matrix.isCompressed) {matrix.compress();}
                 // Perform matrix-vector product using compressed representation
-                std::vector<T> result(numRows, 0);
-                for (std::size_t i = 0; i < numRows; ++i) {
-                    for (std::size_t j = 0; j < numCols; ++j) {
-                        result[i] += compressedMatrix[i][j] * vec[j];
+                std::vector<T> result(matrix.numRows, 0);
+                for (std::size_t i = 0; i < matrix.numRows; ++i) {
+                    for (std::size_t j = 0; j < matrix.numCols; ++j) {
+                        result[i] += matrix.compressedMatrix[i * matrix.numCols + j] * vec[j];
                     }
                 }
                 return result;
-    }
+    }*/
     // Function to print the matrix (supports both compressed and uncompressed)
     template <typename T>
     void Matrix<T,StorageOrder::RowMajor>::print() const {
@@ -172,4 +173,33 @@ namespace algebra {
     };
     }
 
+    template< typename T>
+    std::vector<T> operator * (const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec){
+        // Compress the matrix if it's not already compressed
+    if (!matrix.isCompressed) {
+        matrix.compress();
+    }
+
+    // Create a vector to store the result of matrix-vector multiplication
+    std::vector<T> result(matrix.numRows, 0);
+
+    // Iterate over the rows of the compressed matrix
+    for (std::size_t i = 0; i < matrix.numRows; ++i) {
+        T rowSum = 0;
+
+        // Compute the dot product between the current row of the matrix and the vector 'vec'
+        for (std::size_t j=0; j< matrix.numCols; ++j) {         // Value of the matrix element
+
+            // Multiply the matrix element value with the corresponding vector element and accumulate
+            rowSum += matrix.compressedMatrix[i][j] * vec[j];
+        }
+
+        // Assign the computed dot product to the corresponding index in the result vector
+        result[i] = rowSum;
+    }
+
+    return result;
+    }
+
 }  // namespace algebra
+
