@@ -57,5 +57,9 @@ int main() {
     }
     std::cout << std::endl;
 
-    return 0;
+    algebra::Matrix<double,algebra::StorageOrder::RowMajor> A(0,0);
+    algebra::read(A,"lnsp_131.mtx");
+    std::cout<<std::endl;
+    A.print();
+    return 0; 
 }

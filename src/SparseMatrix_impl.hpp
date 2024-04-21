@@ -1,12 +1,10 @@
 #include "SparseMatrix.hpp"
 
 namespace algebra {
-
-    template <typename T>
-    Matrix<T,StorageOrder::RowMajor>::Matrix() : numRows(0), numCols(0), isCompressed(false) {
-        // Constructor without initialize List
-    }
-
+    
+    template<typename T>
+    Matrix<T,StorageOrder::RowMajor>:: Matrix(std::size_t nrow,std::size_t ncol): numRows(nrow),numCols(ncol),isCompressed(false){}
+    
     template <typename T>
     Matrix<T,StorageOrder::RowMajor>::Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList)
         : numRows(0), numCols(0), isCompressed(false) {
@@ -27,29 +25,26 @@ namespace algebra {
                 numCols = std::max(numCols, col + 1);
             }
     }
-    // Function to insert or update a non-zero element in the matrix
-    /*template <typename T>
-    void SparseMatrix<T>::operator()(std::size_t row, std::size_t col, T value) {
-        // Create a key using the row and column indices
-            std::array<std::size_t, 2> key = {row, col};
-
-            // Insert or update the element in the map
-            elements[key] = value;
-
-            // Update the dimensions of the matrix
-            numRows = std::max(numRows, row + 1);
-            numCols = std::max(numCols, col + 1);
-
-            // Reset the compression flag
-            isCompressed = false;
-    }*/
+    template<typename T>
+    void Matrix<T,StorageOrder::RowMajor>::resize(std::size_t nr,std::size_t nc){
+        numRows=nr;
+        numCols=nc;
+        isCompressed = false;
+    }
     // Const operator() to access elements in a compressed or uncompressed matrix
     template <typename T>
     T Matrix<T,StorageOrder::RowMajor>::operator()(std::size_t row, std::size_t col) const {
         if (row < numRows && col < numCols) {
                 if (isCompressed) {
                     // Access element in compressed matrix
-                    return compressedMatrix[row][col];
+                        auto it = std::find_if(compressedMatrix[row].cbegin(), compressedMatrix[row].cend(),
+                            [col](const std::pair<std::size_t, T>& p) {
+                                return p.first == col;
+                            });
+                        if(it!= compressedMatrix[row].cend()){
+                            return it->second;
+                        }
+                    throw std::out_of_range("Element not exist");
                 } else {
                     // Access element in uncompressed map
                     auto it = elements.find({row, col});
@@ -60,8 +55,7 @@ namespace algebra {
                     }
                 }
             } else {
-                std::cerr << "Error: Index out of bounds." << std::endl;
-                return T(); // Return default value if index is out of bounds
+                throw std::out_of_range("Index out of boundary");
             }
     }
      // Non-const operator() to modify elements in a compressed or uncompressed matrix
@@ -69,13 +63,15 @@ namespace algebra {
     T& Matrix<T,StorageOrder::RowMajor>::operator()(std::size_t row, std::size_t col) {
         if (isCompressed) {
         // Check if the element exists and is non-zero in the compressed matrix
-            if (row < numRows && col < numCols && compressedMatrix[row][col] != 0) {
-                return compressedMatrix[row][col];
+             auto it = std::find_if(compressedMatrix[row].begin(), compressedMatrix[row].end(),
+                            [col](const std::pair<std::size_t, T>& p) {
+                                return p.first == col;
+                            });
+            if (row < numRows && col < numCols && it!=compressedMatrix[row].cend()&&it->second != 0) {
+                return it->second;
             } else {
-                std::cerr << "Error: Cannot add new elements in compressed matrix. Uncompress first to modify." << std::endl;
-                // Returning a reference to a temporary, not safe
-                // Consider throwing an exception or handling differently based on your needs
-                return compressedMatrix[0][0]; // Return a reference to the first element (not safe)
+                //If the element is not foud this will cause an exception
+                throw std::out_of_range("Index out of boundary");
             }
         } else {
              // Access or insert element in uncompressed map
@@ -84,26 +80,22 @@ namespace algebra {
     }
     // Function to compress the sparse matrix representation (const-correct version)
     template <typename T>
-    void Matrix<T,StorageOrder::RowMajor>::compress() const {
-        if (!isCompressed) {
-            auto& self = const_cast<Matrix<T,StorageOrder::RowMajor>&>(*this); // Cast away constness
-
-            // Initialize the compressed matrix with zeros
-            self.compressedMatrix.assign(numRows, std::vector<T>(numCols, 0));
-
-            // Copy elements from map to compressed matrix
-            for (const auto& elem : self.elements) {
-                std::size_t row = elem.first[0];
-                std::size_t col = elem.first[1];
-                T value = elem.second;
-                self.compressedMatrix[row][col] = value;
+    void Matrix<T,StorageOrder::RowMajor>::compress()  { 
+        //The change of form must be done only if the Matrix is not already compress
+        if(!isCompressed){
+        compressedMatrix.resize(numRows);
+        for(std::size_t i=0;i<numRows;++i){
+            auto cit = elements.lower_bound({i,0});
+            auto cend = elements.lower_bound({i+1,0});
+            for (; cit != cend; ++cit){
+                compressedMatrix[i].emplace_back(cit->first[1],cit->second);
             }
+        }
+       //Clear the map to free the memory
+       elements.clear();
 
-        // Clear the map to free memory
-        self.elements.clear();
-
-        // Set the compression flag
-        self.isCompressed = true;
+        //Set the compressed flag
+        isCompressed = true;
     }
     }
 
@@ -116,11 +108,10 @@ namespace algebra {
             }
 
             // Rebuild the elements map from compressed matrix
-            for (std::size_t i = 0; i < numRows; ++i) {
-                for (std::size_t j = 0; j < numCols; ++j) {
-                    if (compressedMatrix[i][j] != 0) {
-                        elements[{i, j}] = compressedMatrix[i][j];
-                    }
+            for(std::size_t i=0;i<numRows;++i){
+                for(auto it = compressedMatrix[i].begin();it!=compressedMatrix[i].end();++it){
+                    auto jj = it->first;
+                    elements[{i,jj}] = it->second;
                 }
             }
 
@@ -130,68 +121,98 @@ namespace algebra {
             // Reset the compression flag
             isCompressed = false;
     }
-
-    // Function to perform matrix-vector multiplication
-   /* template <typename T>
-    std::vector<T> operator*(const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec){
-    //std::vector<T> Matrix<T,StorageOrder::RowMajor>::matrixVectorProduct(const std::vector<T>& vec) const {
-        if (!matrix.isCompressed) {matrix.compress();}
-                // Perform matrix-vector product using compressed representation
-                std::vector<T> result(matrix.numRows, 0);
-                for (std::size_t i = 0; i < matrix.numRows; ++i) {
-                    for (std::size_t j = 0; j < matrix.numCols; ++j) {
-                        result[i] += matrix.compressedMatrix[i * matrix.numCols + j] * vec[j];
-                    }
-                }
-                return result;
-    }*/
     // Function to print the matrix (supports both compressed and uncompressed)
     template <typename T>
     void Matrix<T,StorageOrder::RowMajor>::print() const {
-        if (isCompressed) {
-                // Print the compressed matrix
-                for (std::size_t i = 0; i < numRows; ++i) {
-                    for (std::size_t j = 0; j < numCols; ++j) {
-                        std::cout << compressedMatrix[i][j] << " ";
-                    }
-                    std::cout << std::endl;
+        if(isCompressed){
+            for(std::size_t i=0;i<numRows;++i){
+                for(std::size_t j=0;j<numCols;++j){
+                    auto it = std::find_if(compressedMatrix[i].cbegin(), compressedMatrix[i].cend(),
+                            [j](const std::pair<std::size_t, T>& p) {
+                                return p.first == j;
+                            });
+                    if(it!=compressedMatrix[i].cend()){
+                        std::cout<<it->second;
+                    }else{std::cout<<0;}
                 }
-            } else {
-                // Print the elements map (uncompressed)
-                for (std::size_t i = 0; i < numRows; ++i) {
-                    for (std::size_t j = 0; j < numCols; ++j) {
-                        std::array<std::size_t, 2> key = {i, j};
-                        auto it = elements.find(key);
-                        if (it != elements.end()) {
-                            std::cout << it->second << " ";
-                        } else {
-                            std::cout << "0 ";
-                        }
-                    }
-                    std::cout << std::endl;
+                std::cout<<std::endl;
+            }
+        }else{
+            for(std::size_t i=0;i<numRows;++i){
+                auto it_b = elements.lower_bound({i,0});
+                auto it_e = elements.lower_bound({i+1,0});
+                for(std::size_t j=0;j<numCols;++j){
+                    auto it = std::find_if(it_b,it_e,
+                            [j](const std::pair<std::array<std::size_t,2>,T>& p) {
+                                return p.first[1] == j;
+                            });
+                    if(it != it_e){
+                        std::cout<<it->second;
+                    }else{std::cout<<0;}
                 }
-    };
+                std::cout<<std::endl;
+            }
+        }
     }
 
     template< typename T>
     std::vector<T> operator * (const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec){
         // Compress the matrix if it's not already compressed
-    if (!matrix.isCompressed) {
-        matrix.compress();
-    }
-
+    //The only way to change the state of a const object 
+    auto& mutableMatrix = const_cast<Matrix<T, StorageOrder::RowMajor>&>(matrix);
     // Create a vector to store the result of matrix-vector multiplication
     std::vector<T> result(matrix.numRows, 0);
-
+    //Check for the correctness of dimension
+    if(vec.size() != matrix.numRows){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+    if (!matrix.isCompressed) {
+        mutableMatrix.compress();
+    }
     // Iterate over the rows of the compressed matrix
     for (std::size_t i = 0; i < matrix.numRows; ++i) {
         T rowSum = 0;
 
         // Compute the dot product between the current row of the matrix and the vector 'vec'
-        for (std::size_t j=0; j< matrix.numCols; ++j) {         // Value of the matrix element
-
+        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
             // Multiply the matrix element value with the corresponding vector element and accumulate
-            rowSum += matrix.compressedMatrix[i][j] * vec[j];
+            rowSum += mutableMatrix.compressedMatrix[i][j].second * vec[jj];
+        }
+
+        // Assign the computed dot product to the corresponding index in the result vector
+        result[i] = rowSum;
+    }
+
+    return result;
+    }
+    
+    template <typename T>
+    std::vector<std::complex<T>> operator * (const Matrix<std::complex<T>, StorageOrder::RowMajor>& matrix, const std::vector<std::complex<T>>& vec){
+        // Compress the matrix if it's not already compressed
+   //The only way to change the state of a const object 
+    auto& mutableMatrix = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(matrix);
+   // Create a vector to store the result of matrix-vector multiplication
+    std::vector<std::complex<T>> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.size() != matrix.numRows){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+    if (!matrix.isCompressed) {
+        mutableMatrix.compress();
+    }
+    // Iterate over the rows of the compressed matrix
+    for (std::size_t i = 0; i < matrix.numRows; ++i) {
+        std::complex<T> rowSum = std::complex<T>(0.0, 0.0);
+
+        // Compute the dot product between the current row of the matrix and the vector 'vec'
+        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
+            // Multiply the matrix element value with the corresponding vector element and accumulate
+            rowSum.real += mutableMatrix.compressedMatrix[i][j].second.real * vec[jj].real - mutableMatrix.compressedMatrix[i][j].second.imag*vec[jj].imag;
+            rowSum.imag += mutableMatrix.compressedMatrix[i][j].second.real * vec[jj].imag + mutableMatrix.compressedMatrix[i][j].second.imag * vec[jj].real;
         }
 
         // Assign the computed dot product to the corresponding index in the result vector
@@ -201,5 +222,183 @@ namespace algebra {
     return result;
     }
 
+    template<typename T>
+    T Matrix<T,StorageOrder::RowMajor>::norm(const algebra:: Typenorm& norm_)const{
+       if(norm_ == algebra::Typenorm::One){
+            if(isCompressed){
+                std::vector<T> ColumnSum(numCols,static_cast<T>(0));
+                for(std::size_t i=0;i<numRows;++i){
+                    for(std::size_t j=0;j<numCols;++j){
+                         auto it = std::find_if(compressedMatrix[i].cbegin(), compressedMatrix[i].cend(),
+                            [j](const std::pair<std::size_t, T>& p) {
+                                return p.first == j;
+                            });
+                         if (it!= compressedMatrix[i].cend()){
+                            ColumnSum[j] += std::abs(it->second);
+                         }
+                    }
+                }
+                return *std::max_element(ColumnSum.cbegin(),ColumnSum.cend());
+            }else{
+                T sum,value;
+                value = sum;
+                for(std::size_t i=0;i<numCols;++i){
+                    sum = std::accumulate(elements.cbegin(),elements.cend(),static_cast<T>(0),
+                            [i](const T& acc, const std::pair<const std::array<size_t, 2>, T>& entry){
+                                auto index = entry.first;
+                                if(index[1]==i){
+                                    return acc + std::abs(entry.second);
+                                }
+                                return acc;
+                            });
+                    value = std::max(value,sum);
+                } 
+                return value;
+            }
+       }else if(norm_ == algebra :: Typenorm::Infinity){
+            T sum;
+            if(isCompressed){
+               sum =  std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
+               [](const T& acc,const std::pair<std::size_t, T>& entry){
+                return acc + std::abs(entry.second);
+               });
+               for(std::size_t i=1;i<compressedMatrix.size();++i){
+                sum = std::max(sum ,std::accumulate(compressedMatrix[i].cbegin(),compressedMatrix[i].cend(),static_cast<T>(0),
+               [](const T& acc, const std::pair<std::size_t, T>& entry){
+                return acc + std::abs(entry.second);
+               }));
+               }
+               return sum;
+            }else{
+                std::array<std::size_t,2> Key = {0,0};
+                auto it = elements.lower_bound(Key);
+                Key = {1,0};
+                auto it_end = elements.lower_bound(Key);
+                sum = std::accumulate(it,it_end,static_cast<T>(0),
+                [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){
+                    return acc + std::abs(entry.second);
+                });
+                for(std::size_t i=1;i<numRows;++i){
+                    Key = {i,0};
+                    it = elements.lower_bound(Key);
+                    it_end = elements.lower_bound(Key);
+                    sum = std::max(sum,std::accumulate(it,it_end,static_cast<T>(0),
+                                      [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry ){return acc + std::abs(entry.second);}
+                                      ));
+                }
+                return sum;
+            }
+       }else if(norm_ == algebra::Typenorm::Frobenius){
+                if(isCompressed){
+                    T sum = std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),[](const T& acc,const std::pair<std::size_t, T>& entry){
+                        return acc + std::abs(entry.second*entry.second);});
+                    for(std::size_t i=1;i<compressedMatrix.size();++i){
+                        sum += std::accumulate(compressedMatrix[i].cbegin(),compressedMatrix[i].cend(),static_cast<T>(0),[](const T& acc,const std::pair<std::size_t, T>& entry){
+                            return acc + std::abs(entry.second*entry.second);});
+               }
+               return sum;
+                }else{
+                std::array<std::size_t,2> Key = {0,0};
+                auto it = elements.lower_bound(Key);
+                Key = {1,0};
+                auto it_end = elements.lower_bound(Key);
+                T sum =std::accumulate(it,it_end,static_cast<T>(0),[](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){
+                    return acc + std::abs(entry.second*entry.second);});
+                for(std::size_t i=1;i<numRows;++i){
+                    Key = {i,0};
+                    it = elements.lower_bound(Key);
+                    it_end = elements.lower_bound(Key);
+                    sum +=std::accumulate(it,it_end,static_cast<T>(0),
+                                      [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){return acc + std::abs(entry.second*entry.second);}
+                                      );
+                }
+                return sum;
+                }
+       }
+    }
+    template< typename T>
+    std::vector<T> operator * (const Matrix<T, StorageOrder::RowMajor>& matrix, const Matrix<T,StorageOrder::RowMajor>& vec){
+        // Compress the matrix if it's not already compressed
+    //The only way to change the state of a const object 
+    auto& mutableMatrix = const_cast<Matrix<T, StorageOrder::RowMajor>&>(matrix); 
+    auto& mutableVec = const_cast<Matrix<T, StorageOrder::RowMajor>&>(vec);
+    // Create a vector to store the result of matrix-vector multiplication
+    std::vector<T> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.numRows != matrix.numRows and vec.numCols!=1){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+    if (!matrix.isCompressed) {
+        mutableMatrix.compress();
+    }
+    if(vec.isCompressed){
+        mutableVec.uncompresse();
+    }
+    // Iterate over the rows of the compressed matrix
+    for (std::size_t i = 0; i < matrix.numRows; ++i) {
+        T rowSum = 0;
+
+        // Compute the dot product between the current row of the matrix and the vector 'vec'
+        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
+            // Multiply the matrix element value with the corresponding vector element and accumulate
+            //i'm using the vec that now is a type of sparse matrix in uncompressed format
+            //Since it is simpler find the corrisponding value and the searching operation cost less in a map than in a vector
+            if(mutableVec.elements.find({j,jj})!= mutableVec.elements.end()){
+            rowSum += matrix.compressedMatrix[i][j].second * mutableVec.elements.at({j,jj});
+            }
+        }
+
+        // Assign the computed dot product to the corresponding index in the result vector
+        result[i] = rowSum;
+    }
+
+    return result;
+    }
+    
+    template<typename T>
+    std::vector<std::complex<T>> operator * (const Matrix<std::complex<T>, StorageOrder::RowMajor>& matrix, const Matrix<std::complex<T>,StorageOrder::RowMajor>& vec){
+        // Compress the matrix if it's not already compressed
+    
+    //The only way to change the state of a const object 
+    auto& mutableMatrix = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(matrix); 
+    auto& mutableVec = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(vec);
+    // Create a vector to store the result of matrix-vector multiplication
+    std::vector<std::complex<T>> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.numRows != matrix.numRows and vec.numCols!=1){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+    if (!matrix.isCompressed) {
+        mutableMatrix.compress();
+    }
+    if(vec.isCompressed){
+        mutableVec.uncompresse();
+    }
+    // Iterate over the rows of the compressed matrix
+    for (std::size_t i = 0; i < matrix.numRows; ++i) {
+        std::complex<T> rowSum = std::complex<T> (0.0,0.0);
+
+        // Compute the dot product between the current row of the matrix and the vector 'vec'
+        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
+            // Multiply the matrix element value with the corresponding vector element and accumulate
+            //i'm using the vec that now is a type of sparse matrix in uncompressed format
+            //Since it is simpler find the corrisponding value and the searching operation cost less in a map than in a vector
+            if(mutableVec.elements.find({j,jj})!= mutableVec.elements.end()){
+            //rowSum += matrix.compressedMatrix[i][j].second * vec.elements.at({j,jj});
+              rowSum.real += mutableMatrix.compressedMatrix[i][j].second.real * mutableVec.elements.at({j,jj}).real - mutableMatrix.compressedMatrix[i][j].second.imag*mutableVec.elements.at({j,jj}).imag;
+              rowSum.imag += mutableMatrix.compressedMatrix[i][j].second.real * mutableVec.elements.at({j,jj}).imag + mutableMatrix.compressedMatrix[i][j].second.imag * mutableVec.elements.at({j,jj}).real;
+            }
+        }
+
+        // Assign the computed dot product to the corresponding index in the result vector
+        result[i] = rowSum;
+    }
+
+    return result;
+    }
 }  // namespace algebra
 

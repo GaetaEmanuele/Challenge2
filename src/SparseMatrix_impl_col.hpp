@@ -1,0 +1,342 @@
+#include "SparseMatrix.hpp"
+
+namespace algebra{
+
+    template<typename T>
+    Matrix<T,StorageOrder:: ColumnMajor>:: Matrix(std::size_t nrow,std::size_t ncol): numRows(nrow),numCols(ncol),isCompressed(false){}
+
+    template <typename T>
+    Matrix<T,StorageOrder::ColumnMajor>::Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList)
+        : numRows(0), numCols(0), isCompressed(false) {
+        // Constructor with initializer list of non zero elem
+         for (const auto& tuple : initList) {
+                std::size_t row = std::get<0>(tuple);
+                std::size_t col = std::get<1>(tuple);
+                T value = std::get<2>(tuple);
+
+                // Create a key using the row and column indices
+                std::array<std::size_t, 2> key = {row, col};
+
+                // Insert the element into the map
+                elements[key] = value;
+
+                // Update the dimensions of the matrix
+                numRows = std::max(numRows, row + 1);
+                numCols = std::max(numCols, col + 1);
+            }
+    }
+    // Const operator() to access elements in a compressed or uncompressed matrix
+    template <typename T>
+    T Matrix<T,StorageOrder::ColumnMajor>::operator()(std::size_t row, std::size_t col) const {
+        if (row < numRows && col < numCols) {
+                if (isCompressed) {
+                    // Access element in compressed matrix
+                    auto it = std::find_if(compressedMatrix[col].cbegin(), compressedMatrix[col].cend(),
+                            [row](const std::pair<std::size_t, T>& p) {
+                                return p.first == row;
+                            });
+                    if(it != compressedMatrix[col].cend()){
+                        return it->second;
+                    }
+                    throw std::out_of_range("Element not found");
+                } else {
+                    // Access element in uncompressed map
+                    auto it = elements.find({row, col});
+                    if (it != elements.end()) {
+                        return it->second;
+                    } else {
+                        throw std::out_of_range("element not found");
+                    }
+                }
+            } else {
+                throw std::out_of_range("Index out of boundary");
+            }
+    }
+     // Non-const operator() to modify elements in a compressed or uncompressed matrix
+    template <typename T>
+    T& Matrix<T,StorageOrder::ColumnMajor>::operator()(std::size_t row, std::size_t col) {
+        if (isCompressed) {
+        // Check if the element exists and is non-zero in the compressed matrix
+            auto it = std::find_if(compressedMatrix[col].begin(), compressedMatrix[col].end(),
+                            [row](const std::pair<std::size_t, T>& p) {
+                                return p.first == row;
+                            });
+            if (row < numRows && col < numCols && it->second != 0) {
+                return it->second;
+            } else {
+                throw std::out_of_range("Indexes out of boundary");
+            }
+        } else {
+             // Access or insert element in uncompressed map
+            return elements[{row, col}];
+        }
+    }
+    // Function to compress the sparse matrix representation (const-correct version)
+    template <typename T>
+    void Matrix<T,StorageOrder::ColumnMajor>::compress(){
+        //The change of form must be done only if the Matrix is not already compress
+        if(!isCompressed){
+            //Resize the matrix
+            compressedMatrix.resize(numCols);
+            for(std::size_t i=0;i<numCols;++i){
+                auto cit = elements.lower_bound({0,i});
+                auto cend = elements.lower_bound({0,i+1});
+                for (; cit != cend; ++cit){
+                    compressedMatrix[i].emplace_back(cit->first[0],cit->second);
+                }
+            }
+       //Clear the map to free the memory
+       elements.clear();
+
+        //Set the compressed flag
+        isCompressed = true;
+        }
+    }
+
+    // Function to uncompress the sparse matrix representation
+    template <typename T>
+    void Matrix<T,StorageOrder::ColumnMajor>::uncompress() {
+        if (!isCompressed) {
+                std::cerr << "Error: Matrix is not compressed. Cannot uncompress." << std::endl;
+                return;
+            }
+
+            // Rebuild the elements map from compressed matrix
+            for(std::size_t i=0;i<numCols;++i){
+                for(auto it = compressedMatrix[i].begin();it!=compressedMatrix[i].end();++it){
+                    auto jj = it->first;
+                    elements[{jj,i}] = it->second;
+                }
+            }
+
+            // Clear the compressed matrix to free memory
+            compressedMatrix.clear();
+
+            // Reset the compression flag
+            isCompressed = false;
+    }
+    // Function to print the matrix (supports both compressed and uncompressed)
+    template <typename T>
+    void Matrix<T,StorageOrder::ColumnMajor>::print() const {
+        /*if (isCompressed) {
+                // Print the compressed matrix
+                for (std::size_t i = 0; i < numRows; ++i) {
+                    for (std::size_t j = 0; j < numCols; ++j) {
+                        std::cout << compressedMatrix[i][j] << " ";
+                    }
+                    std::cout << std::endl;
+                }
+            } else {
+                // Print the elements map (uncompressed)
+                for (std::size_t i = 0; i < numRows; ++i) {
+                    for (std::size_t j = 0; j < numCols; ++j) {
+                        std::array<std::size_t, 2> key = {i, j};
+                        auto it = elements.find(key);
+                        if (it != elements.end()) {
+                            std::cout << it->second << " ";
+                        } else {
+                            std::cout << "0 ";
+                        }
+                    }
+                    std::cout << std::endl;
+                }
+    };*/
+    }
+
+    template< typename T>
+    std::vector<T> operator * (const Matrix<T, StorageOrder::ColumnMajor>& matrix, const std::vector<T>& vec){
+        // Compress the matrix if it's not already compressed
+       //The only way to change the state of a const object 
+   // Create a vector to store the result of matrix-vector multiplication
+    std::vector<T> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.size() != matrix.numRows){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+
+    for(std::size_t j=0;j<matrix.numCols;++j){
+        auto it = matrix.elements.lower_bound({0,j});
+        auto it_end = matrix.elements.lower_bound({0,j+1});
+        for(;it!=it_end;++it){
+            std::size_t jj = it->first[0];
+            result[jj] += it->second* vec[jj];
+        }
+    }
+
+    return result;
+    }
+
+    template< typename T>
+    std::vector<std::complex<T>> operator * (const Matrix<std::complex<T>, StorageOrder::ColumnMajor>& matrix, const std::vector<std::complex<T>>& vec){
+        // Compress the matrix if it's not already compressed
+       //The only way to change the state of a const object 
+   // Create a vector to store the result of matrix-vector multiplication
+    std::vector<std::complex<T>> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.size() != matrix.numRows){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+
+    for(std::size_t j=0;j<matrix.numCols;++j){
+        auto it = matrix.elements.lower_bound({0,j});
+        auto it_end = matrix.elements.lower_bound({0,j+1});
+        for(;it!=it_end;++it){
+            std::size_t jj = it->first[0];
+            result[jj].real += it->second.real* vec[jj].real - it->second.imag * vec[jj].imag;
+            result[jj].imag += it->second.real* vec[jj].imag + it->second.imag * vec[jj].real;      
+        }
+    }
+
+    return result;
+    }
+
+    template<typename T>
+    T Matrix<T,StorageOrder::ColumnMajor>::norm(const algebra:: Typenorm& norm_)const{
+        if(norm_ == algebra::Typenorm::One){
+                T sum;
+                if(isCompressed){
+                    sum = std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
+                                         [](const T& acc,const std::pair<std::size_t,T>&entry){
+                                            return acc + std::abs(entry.second);
+                                         });
+                    for(std::size_t i=1;i<compressedMatrix.size();++i){
+                        sum = std::max(sum,std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
+                                         [](const T& acc,const std::pair<std::size_t,T>&entry){
+                                            return acc + std::abs(entry.second);
+                                         }));
+                    return sum;
+                    }
+                }else{
+                    std::array<std::size_t,2> Key = {0,0};
+                    auto it = elements.lower_bound(Key);
+                    Key = {0,1};
+                    auto it_end = elements.lower_bound(Key);
+                    sum = std::accumulate(it,it_end,static_cast<T>(0),
+                                         [](const T& acc, const std::pair<const std::array<std::size_t,2>,T>& entry){
+                                            return acc + std::abs(entry.second);
+                                         }); 
+                    for (std::size_t i=1;i<numCols;++i){
+                        Key = {0,i};
+                        it = elements.lower_bound(Key);
+                        Key = {0,i+1};
+                        it_end = elements.lower_bound(Key);
+                        sum  = std:: max(sum,std::accumulate(it,it_end,static_cast<T>(0),
+                                         [](const T& acc, const std::pair<const std::array<std::size_t,2>,T>& entry){
+                                            return acc + std::abs(entry.second);
+                                         }));
+                    }
+                    return sum;
+                }   
+        }else if(norm_ == algebra::Typenorm::Infinity){
+                if(isCompressed){
+                std::vector<T> RowSum(numRows,static_cast<T>(0));
+                for(std::size_t i=0;i<numCols;++i){
+                    for(std::size_t j=0;j<numRows;++j){
+                         auto it = std::find_if(compressedMatrix[i].begin(), compressedMatrix[i].end(),
+                            [j](const std::pair<std::size_t, T>& p) {
+                                return p.first == j;
+                            });
+                         if (it!= compressedMatrix[i].cend()){
+                            RowSum[j] += std::abs(it->second);
+                         }
+                    }
+                }
+                return *std::max_element(RowSum.cbegin(),RowSum.cend());
+                }else{
+                T sum,value;
+                value = sum;
+                for(std::size_t i=0;i<numRows;++i){
+                    sum = std::accumulate(elements.cbegin(),elements.cend(),static_cast<T>(0),
+                            [i](const T& acc, const std::pair<const std::array<size_t, 2>, T>& entry){
+                                auto index = entry.first;
+                                if(index[0]==i){
+                                    return acc + std::abs(entry.second);
+                                }
+                                return acc;
+                            });
+                    value = std::max(value,sum);
+                } 
+                return value;
+                }
+        }else if(norm_ == algebra::Typenorm::Frobenius){
+                T sum;
+                if(isCompressed){
+                    T sum = std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),[](const T& acc,const std::pair<std::size_t, T>& entry){
+                        return acc + std::abs(entry.second*entry.second);});
+                    for(std::size_t i=1;i<compressedMatrix.size();++i){
+                        sum += std::accumulate(compressedMatrix[i].cbegin(),compressedMatrix[i].cend(),static_cast<T>(0),[](const T& acc,const std::pair<std::size_t, T>& entry){
+                            return acc + std::abs(entry.second*entry.second);});
+               }
+               return sum;
+                }else{
+                std::array<std::size_t,2> Key = {0,0};
+                auto it = elements.lower_bound(Key);
+                Key = {0,1};
+                auto it_end = elements.lower_bound(Key);
+                T sum =std::accumulate(it,it_end,static_cast<T>(0),[](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){
+                    return acc + std::abs(entry.second*entry.second);});
+                for(std::size_t i=1;i<numRows;++i){
+                    Key = {0,i};
+                    it = elements.lower_bound(Key);
+                    it_end = elements.lower_bound(Key);
+                    sum +=std::accumulate(it,it_end,static_cast<T>(0),
+                                      [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){return acc + std::abs(entry.second*entry.second);}
+                                      );
+                    }
+                return sum;
+        }
+            }
+            } 
+
+    template<typename T>
+    void Matrix<T,StorageOrder::ColumnMajor>::resize(std::size_t nrow,std::size_t ncol){
+            numRows =nrow;
+            numCols = ncol;
+            isCompressed =false;
+    }
+    template<typename T>
+    std::vector<T> operator*(const Matrix<T, StorageOrder::ColumnMajor>& matrix, Matrix<T, StorageOrder::ColumnMajor>& vec){
+        std::vector<T> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.numRows() != matrix.numRows and vec.numCols() !=1 ){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+       for(std::size_t j=0;j<matrix.numCols;++j){
+        auto it = matrix.elements.lower_bound({0,j});
+        auto it_end = matrix.elements.lower_bound({0,j+1});
+        for(;it!=it_end;++it){
+            std::size_t jj = it->first[0];
+            if(vec.elements.find({jj,j}) != vec.elements.end()){
+            result[jj] += it->second * vec.at({jj,j});
+        }
+    }
+    }
+        return result;
+    }
+
+    template<typename T>
+    std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>, StorageOrder::ColumnMajor>& matrix, Matrix<std::complex<T>, StorageOrder::ColumnMajor>& vec){
+    
+    std::vector<std::complex<T>> result(matrix.numRows, 0);
+    //Check for the correctness of dimension
+    if(vec.numRows() != matrix.numRows and vec.numCols() !=1 ){
+        std::cerr<<"Error dimension not coeirent"<<std::endl;
+        return result;
+    }
+       for(std::size_t j=0;j<matrix.numCols;++j){
+        auto it = matrix.elements.lower_bound({0,j});
+        auto it_end = matrix.elements.lower_bound({0,j+1});
+        for(;it!=it_end;++it){
+            std::size_t jj = it->first[0];
+            if(vec.elements.find({jj,j}) != vec.elements.end()){
+                result[jj].real += it->secon.real * vec.at({jj,j}).real - it->second.imag*vec.at({jj,j}).imag;
+                result[jj].imag += it->secon.real * vec.at({jj,j}).imag + it->second.imag*vec.at({jj,j}).real;
+            }
+    }
+    }
+        return result;
+    }
+} //name space algebra
