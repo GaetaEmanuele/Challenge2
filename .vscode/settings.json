@@ -60,5 +60,6 @@
         "memory_resource": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "enabled"
 }

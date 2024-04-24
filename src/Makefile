@@ -1,7 +1,8 @@
 CXX      ?= g++
 CXXFLAGS ?= -std=c++17
-CPPFLAGS ?= -O3 -Wall -pedantic -I. #-I${mkEigenInc}
-LDLIBS   ?= 
+CPPFLAGS ?= -O3 -Wall -pedantic -I. -I$(PACS_ROOT)/include #-I${mkEigenInc}
+LDFLAGS  ?= -L$(PACS_ROOT)/src/Utities
+LDLIBS   ?= -L$(PACS_ROOT)/lib
 LINK.o := $(LINK.cc) # Use C++ linker.
 
 DEPEND = make.dep

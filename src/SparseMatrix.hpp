@@ -34,18 +34,25 @@ namespace algebra {
     
     enum class StorageOrder { RowMajor, ColumnMajor };
     
-    template <typename T, StorageOrder Order>
+    template<typename T,StorageOrder Order>
     class Matrix;
-
+    
     template <typename T, StorageOrder Order>
     void read(Matrix<T, Order>& matrix, const std::string& file_name);
     
-    template <typename T>
-    std::vector<T> operator*(const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec);
+    template <typename T,StorageOrder Order>
+    std::vector<T> operator*(const Matrix<T, Order>& matrix, const std::vector<T>& vec);
     
-    template<typename T>
-    std::vector<T> operator* (const Matrix<T, StorageOrder::RowMajor>& matrix, const Matrix<T,StorageOrder::RowMajor>& vec);
+    template <typename T,StorageOrder Order>
+    std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>, Order>& matrix, const std::vector<std::complex<T>>& vec);
+
+    template<typename T, StorageOrder Order>
+    std::vector<T> operator*(const Matrix<T, Order>& matrix, const Matrix<T,Order>& vec);
     
+    template<typename T, StorageOrder Order>
+    std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>, Order>& matrix, const Matrix<std::complex<T>,Order>& vec);
+
+
     template <typename T>
     class Matrix<T, StorageOrder::RowMajor> : public SparseMatrixBase<T> {
     private:
@@ -66,8 +73,8 @@ namespace algebra {
         void compress() override;
         void uncompress() override;
         T norm(const algebra:: Typenorm& norm_)const override;
-        friend std::vector<T> algebra::operator*<>(const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec);
-        friend std::vector<T> algebra::operator*<>(const Matrix<T, StorageOrder::RowMajor>& matrix, const Matrix<T,StorageOrder::RowMajor>& vec);
+        friend std::vector<T> operator*<> (const Matrix<T, StorageOrder::RowMajor>& matrix, const std::vector<T>& vec);
+        friend std::vector<T> algebra:: operator*<>(const Matrix<T, StorageOrder::RowMajor>& matrix, const Matrix<T,StorageOrder::RowMajor>& vec);
         //std::vector<T> matrixVectorProduct(const std::vector<T>& vec) const override;
         friend void read<>(Matrix<T, StorageOrder::RowMajor>& matrix,const std::string& file_name);
         void print() const override;
@@ -80,12 +87,6 @@ namespace algebra {
             return a[1] < b[1] || (a[1] == b[1] && a[0] < b[0]); 
         }
     };
-
-    template <typename T>
-    std::vector<T> operator*(const Matrix<T, StorageOrder::ColumnMajor>& matrix, const std::vector<T>& vec);
-    template <typename T>
-    std::vector<T> operator*(const Matrix<T, StorageOrder::ColumnMajor>& matrix, Matrix<T, StorageOrder::ColumnMajor>& vec);
-
     template<typename T>
     class Matrix<T, StorageOrder::ColumnMajor> : public SparseMatrixBase<T> {
     private:
@@ -106,8 +107,8 @@ namespace algebra {
         void uncompress() override;
         T norm(const algebra::Typenorm& norm_)const override;
         friend void read<>(Matrix<T,StorageOrder::ColumnMajor>& matrix,const std::string& file_name);
-        friend std::vector<T> operator*<>(const Matrix<T, StorageOrder::ColumnMajor>& matrix, const std::vector<T>& vec);
-        friend std::vector<T> operator*<>(const Matrix<T, StorageOrder::ColumnMajor>& matrix, const Matrix<T,StorageOrder::ColumnMajor>& vec);
+        friend std::vector<T> operator*<> (const Matrix<T, StorageOrder::ColumnMajor>& matrix, const std::vector<T>& vec);
+        friend std::vector<T> operator*<> (const Matrix<T, StorageOrder::ColumnMajor>& matrix, const Matrix<T,StorageOrder::ColumnMajor>& vec);
         //std::vector<T> matrixVectorProduct(const std::vector<T>& vec) const override;
         void print() const override;
     };  
@@ -118,5 +119,5 @@ namespace algebra {
 
 #include "SparseMatrix_impl.hpp"  // Include the implementation file for RowMajor
 #include "SparseMatrix_impl_col.hpp" //Include the implementation fil for ColumnMajor
-#include "SparseMatrxiRead.hpp"
+#include "SparseMatrxiOperator.hpp" //Include the Operator for the matrix
 #endif // SPARSEMATRIX_HPP

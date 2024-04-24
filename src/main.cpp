@@ -1,5 +1,6 @@
 #include <iostream>
 #include "SparseMatrix.hpp"  // Include the header file with SparseMatrix implementation
+#include "chrono.hpp"
 int main() {
     // Create a sparse matrix with initial non-zero elements
     algebra::Matrix<double,algebra::StorageOrder::RowMajor> mat{
@@ -56,10 +57,65 @@ int main() {
         std::cout << val << " ";
     }
     std::cout << std::endl;
-
+    Timings::Chrono chrono;
     algebra::Matrix<double,algebra::StorageOrder::RowMajor> A(0,0);
+    chrono.start();
     algebra::read(A,"lnsp_131.mtx");
+    chrono.stop();
+    double t = chrono.wallTime();
+    std::cout<<"The reading requires: "<<t<<"mics"<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<"The matrix A is";
     std::cout<<std::endl;
     A.print();
+    std::cout<<std::endl;
+    std::cout <<"The One norm of A is:";
+    double norm1 = A.norm(algebra::Typenorm::One);
+    std::cout<<norm1;
+    std::cout<<std::endl;
+    std::cout <<"The Infinity norm of A is:";
+    double norm2 = A.norm(algebra::Typenorm::Infinity);
+    std::cout<<norm2;
+    std::cout<<std::endl;
+    std::cout <<"The Frobenoius norm of A is:";
+    double norm3 = A.norm(algebra::Typenorm::Frobenius);
+    std::cout<<norm3;
+    std::cout<<std::endl;
+    std::vector<double> a(131,1.0);
+    std::cout<<"The reusult of the matrix*vector multiplication is :"<<std::endl;
+    chrono.start();
+    std::vector<double> x =  A *a;
+    chrono.stop();
+    t = chrono.wallTime();
+    std::cout<<"The Matrix vector product requires: "<<t<<"micsec"<<std::endl;
+    for(std::size_t i=0;i<131;++i){
+        std::cout<<x[i];
+    }
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    algebra::Matrix<double,algebra::StorageOrder::ColumnMajor> B(0,0);
+    algebra::read(B,"lnsp_131.mtx");
+    std::cout<<std::endl;
+    B.print();
+    std::cout<<std::endl;
+    std::cout <<"The One norm of B is:";
+    norm1 = B.norm(algebra::Typenorm::One);
+    std::cout<<norm1;
+    std::cout<<std::endl;
+    std::cout <<"The Infinity norm of B is:";
+    norm2 = B.norm(algebra::Typenorm::Infinity);
+    std::cout<<norm2;
+    std::cout<<std::endl;
+    std::cout <<"The Frobenoius norm of B is:";
+    norm3 = B.norm(algebra::Typenorm::Frobenius);
+    std::cout<<norm3;
+    std::cout<<std::endl;
+    std::cout<<"The reusult of the matrix*vector multiplication is :"<<std::endl;
+    x =  B *a;
+    for(std::size_t i=0;i<131;++i){
+        std::cout<<x[i];
+    }
     return 0; 
 }
