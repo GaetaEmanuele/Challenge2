@@ -189,7 +189,7 @@ namespace algebra {
                 return value;
             }
        }else if(norm_ == algebra :: Typenorm::Infinity){
-            T sum(static_cast<T>(0));
+            T sum = static_cast<T>(0);
             if(isCompressed){
                sum =  std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
                [](const T& acc,const std::pair<std::size_t, T>& entry){
@@ -214,6 +214,7 @@ namespace algebra {
                 for(std::size_t i=1;i<numRows;++i){
                     Key = {i,0};
                     it = elements.lower_bound(Key);
+                    Key = {i+1,0};
                     it_end = elements.lower_bound(Key);
                     sum = std::max(sum,std::accumulate(it,it_end,static_cast<T>(0),
                                       [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry ){return acc + std::abs(entry.second);}
@@ -240,6 +241,7 @@ namespace algebra {
                 for(std::size_t i=1;i<numRows;++i){
                     Key = {i,0};
                     it = elements.lower_bound(Key);
+                    Key = {i+1,0};
                     it_end = elements.lower_bound(Key);
                     sum +=std::accumulate(it,it_end,static_cast<T>(0),
                                       [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){return acc + std::abs(entry.second*entry.second);}

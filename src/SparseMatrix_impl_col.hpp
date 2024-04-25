@@ -159,7 +159,7 @@ namespace algebra{
                                             return acc + std::abs(entry.second);
                                          });
                     for(std::size_t i=1;i<compressedMatrix.size();++i){
-                        sum = std::max(sum,std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
+                        sum = std::max(sum,std::accumulate(compressedMatrix[i].cbegin(),compressedMatrix[i].cend(),static_cast<T>(0),
                                          [](const T& acc,const std::pair<std::size_t,T>&entry){
                                             return acc + std::abs(entry.second);
                                          }));
@@ -237,6 +237,7 @@ namespace algebra{
                 for(std::size_t i=1;i<numRows;++i){
                     Key = {0,i};
                     it = elements.lower_bound(Key);
+                    Key = {0,i+1};
                     it_end = elements.lower_bound(Key);
                     sum +=std::accumulate(it,it_end,static_cast<T>(0),
                                       [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){return acc + std::abs(entry.second*entry.second);}
