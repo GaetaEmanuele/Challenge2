@@ -1,5 +1,5 @@
 CXX      ?= g++
-CXXFLAGS ?= -std=c++17
+CXXFLAGS ?= -std=c++20
 CPPFLAGS ?= -O3 -Wall -pedantic -I. -I$(PACS_ROOT)/include 
 LDFLAGS  ?= -L$(PACS_ROOT)/src/Utities
 LDLIBS   ?= -L$(PACS_ROOT)/lib

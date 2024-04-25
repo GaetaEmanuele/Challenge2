@@ -1,12 +1,10 @@
 #ifndef SPARSEMATRIX_HPP
 #define SPARSEMATRIX_HPP
-
-#include <iostream>
+#include "SparseMatrixTraits.hpp"
 #include <map>
 #include <array>
 #include <vector>
 #include <initializer_list>  // For std::initializer_list
-#include <complex>
 #include <string>
 #include <algorithm>
 #include<utility>
@@ -15,6 +13,7 @@
 #include<numeric>
 #include<cmath>
 #include <fstream>
+
 namespace algebra {
 
     // Matrix class template for a sparse matrix using std::map for dynamic construction
@@ -43,16 +42,9 @@ namespace algebra {
     template <typename T,StorageOrder Order>
     std::vector<T> operator*(const Matrix<T, Order>& matrix, const std::vector<T>& vec);
     
-    template <typename T,StorageOrder Order>
-    std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>, Order>& matrix, const std::vector<std::complex<T>>& vec);
-
     template<typename T, StorageOrder Order>
     std::vector<T> operator*(const Matrix<T, Order>& matrix, const Matrix<T,Order>& vec);
-    
-    template<typename T, StorageOrder Order>
-    std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>, Order>& matrix, const Matrix<std::complex<T>,Order>& vec);
-
-
+  
     template <typename T>
     class Matrix<T, StorageOrder::RowMajor> : public SparseMatrixBase<T> {
     private:

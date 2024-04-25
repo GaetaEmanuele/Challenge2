@@ -51,8 +51,6 @@ void read(Matrix<T, Order>& matrix ,const std::string& file_name){
 template<typename T, StorageOrder Order>
 std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& vec){
     if constexpr(Order == algebra::StorageOrder::RowMajor){
-            //The only way to change the state of a const object 
-        auto& mutableMatrix = const_cast<Matrix<T, StorageOrder::RowMajor>&>(matrix);
         // Create a vector to store the result of matrix-vector multiplication
         std::vector<T> result(matrix.numRows,static_cast<T>(0));
         //Check for the correctness of dimension
@@ -60,25 +58,41 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& ve
             std::cerr<<"Error dimension not coeirent"<<std::endl;
             return result;
         }
-        if (!matrix.isCompressed) {
-            mutableMatrix.compress();
+        if (matrix.isCompressed) {
+            // Iterate over the rows of the compressed matrix
+            for (std::size_t i = 0; i < matrix.numRows; ++i) {
+                T rowSum = static_cast<T>(0);
+    
+                // Compute the dot product between the current row of the matrix and the vector 'vec'
+                for (std::size_t j=0; j< matrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+                        std:: size_t jj = matrix.compressedMatrix[i][j].first;
+                        // Multiply the matrix element value with the corresponding vector element and accumulate
+                        rowSum += matrix.compressedMatrix[i][j].second * vec[jj];
+                        }
+                    // Assign the computed dot product to the corresponding index in the result vector
+                    result[i] = rowSum;
+                }
+
+            return result;
+        }else{
+            for(std::size_t i=0;i<matrix.numRows;++i){
+                //initialization of the value of the ith componets of the result
+                T rowSum = static_cast<T>(0);
+                //Use Key to exctract the ith row
+                std::array<std::size_t,2> Key = {i,0};
+                auto it = matrix.elements.lower_bound(Key);
+                Key = {i+1,0};
+                auto it_end = matrix.elements.lower_bound(Key);
+                //Compute Rowsum
+                for(;it != it_end;++it){
+                    std::size_t j = it->first[1];
+                    rowSum += it->second*vec[j];
+                }
+                //assignment to the return value
+                result[i] = rowSum;
+            }
+            return result;
         }
-        // Iterate over the rows of the compressed matrix
-        for (std::size_t i = 0; i < matrix.numRows; ++i) {
-            T rowSum = static_cast<T>(0);
-
-            // Compute the dot product between the current row of the matrix and the vector 'vec'
-            for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
-                std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
-                // Multiply the matrix element value with the corresponding vector element and accumulate
-                rowSum += mutableMatrix.compressedMatrix[i][j].second * vec[jj];
-         }
-
-        // Assign the computed dot product to the corresponding index in the result vector
-        result[i] = rowSum;
-    }
-
-    return result;
     }else if constexpr(Order == algebra::StorageOrder::ColumnMajor){
         // Create a vector to store the result of matrix-vector multiplication
     std::vector<T> result(matrix.numRows, 0);
@@ -87,193 +101,101 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& ve
         std::cerr<<"Error dimension not coeirent"<<std::endl;
         return result;
     }
-
-    for(std::size_t j=0;j<matrix.numCols;++j){
-        auto it = matrix.elements.lower_bound({0,j});
-        auto it_end = matrix.elements.lower_bound({0,j+1});
-        for(;it!=it_end;++it){
-            std::size_t jj = it->first[0];
-            result[jj] += it->second* vec[jj];
+    if(!matrix.isCompressed){
+        for(std::size_t j=0;j<matrix.numCols;++j){
+            auto it = matrix.elements.lower_bound({0,j});
+            auto it_end = matrix.elements.lower_bound({0,j+1});
+            for(;it!=it_end;++it){
+                std::size_t jj = it->first[0];
+                result[jj] += it->second* vec[jj];
+            }
         }
+        return result;
+    }else{
+        for(std::size_t j=0;j<matrix.numCols;++j){
+            auto it = matrix.compressedMatrix[j].cbegin();
+            auto it_end = matrix.compressedMatrix[j].cend();
+            for(;it != it_end;++it){
+                std::size_t i = it->first;
+                result[i] += it->second*vec[i];
+            }
+        }
+        return result;
     }
-
-    return result;
     }
 }
 
 template<typename T, StorageOrder Order>
 std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& vec){
     if constexpr (Order == algebra::StorageOrder::RowMajor){
-        //The only way to change the state of a const object 
-        auto& mutableMatrix = const_cast<Matrix<T, StorageOrder::RowMajor>&>(matrix); 
-        auto& mutableVec = const_cast<Matrix<T, StorageOrder::RowMajor>&>(vec);
-        // Create a vector to store the result of matrix-vector multiplication
-        std::vector<T> result(matrix.numRows, 0);
-        //Check for the correctness of dimension
-        if(vec.numRows != matrix.numRows and vec.numCols!=1){
-            std::cerr<<"Error dimension not coeirent"<<std::endl;
+        std::vector<T> result(matrix.numRows,static_cast<T>(0));
+        if(vec.numRows != matrix.numRows && vec.numCols >1){
+            std::cerr<<"Dimension not valid"<<std::endl;
             return result;
         }
-        if (!matrix.isCompressed) {
-            mutableMatrix.compress();
+        //for semplicity the vector will be used in the compact format
+        auto& mutableVec = const_cast<Matrix<T, StorageOrder::RowMajor>&>(vec);
+        if(mutableVec.isCompressed){
+            mutableVec.uncompress();
         }
-        if(vec.isCompressed){
-            mutableVec.uncompresse();
-        }
-        // Iterate over the rows of the compressed matrix
-        for (std::size_t i = 0; i < matrix.numRows; ++i) {
-            T rowSum = static_cast<T>(0);
-
-            // Compute the dot product between the current row of the matrix and the vector 'vec'
-            for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
-                std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
-                // Multiply the matrix element value with the corresponding vector element and accumulate
-                //i'm using the vec that now is a type of sparse matrix in uncompressed format
-                //Since it is simpler find the corrisponding value and the searching operation cost less in a map than in a vector
-                if(mutableVec.elements.find({j,jj})!= mutableVec.elements.end()){
-                rowSum += matrix.compressedMatrix[i][j].second * mutableVec.elements.at({j,jj});
+        if(matrix.isCompressed){
+            // Iterate over the rows of the compressed matrix
+            for (std::size_t i = 0; i < matrix.numRows; ++i) {
+                T rowSum = static_cast<T>(0);
+                // Compute the dot product between the current row of the matrix and the vector 'vec'
+                for (std::size_t j=0; j< matrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
+                        std:: size_t jj = matrix.compressedMatrix[i][j].first;
+                        // Multiply the matrix element value with the corresponding vector element and accumulate
+                        if(mutableVec.elements.find({jj,0})!= mutableVec.elements.end()){
+                            rowSum += matrix.compressedMatrix[i][j].second * mutableVec.elements.at({jj,0});
+                            }
+                        }
+                    // Assign the computed dot product to the corresponding index in the result vector
+                    result[i] = rowSum;
                 }
+            return result;
+        }else{
+            for(std::size_t i=0;i<matrix.numRows;++i){
+                //initialization of the value of the ith componets of the result
+                T rowSum = static_cast<T>(0);
+                //Use Key to exctract the ith row
+                std::array<std::size_t,2> Key = {i,0};
+                auto it = matrix.elements.lower_bound(Key);
+                Key = {i+1,0};
+                auto it_end = matrix.elements.lower_bound(Key);
+                //Compute Rowsum
+                for(;it != it_end;++it){
+                    std::size_t j = it->first[1];
+                    if(mutableVec.elements.find({j,0})!=mutableVec.elements.end()){
+                        rowSum += it->second*mutableVec.elements.at({j,0});
+                    }
+                }
+                //assignment to the return value
+                result[i] = rowSum;
             }
-
-        // Assign the computed dot product to the corresponding index in the result vector
-        result[i] = rowSum;
+            return result;
         }
-
         return result;
     }else if constexpr(Order == algebra::StorageOrder::ColumnMajor){
-             std::vector<T> result(matrix.numRows, 0);
+             std::vector<T> result(matrix.numRows, static_cast<T>(0));
     //Check for the correctness of dimension
-    if(vec.numRows() != matrix.numRows and vec.numCols() !=1 ){
+    if(vec.numRows != matrix.numRows and vec.numCols >1 ){
         std::cerr<<"Error dimension not coeirent"<<std::endl;
         return result;
+    }
+    //the vector for semplicity must be stored in RowMajor since it is 
+    //a column vector
+    auto& mutableVec = const_cast<Matrix<T, StorageOrder::RowMajor>&>(vec);
+    if(mutableVec.isCompressed){
+        mutableVec.uncompress();
     }
        for(std::size_t j=0;j<matrix.numCols;++j){
             auto it = matrix.elements.lower_bound({0,j});
             auto it_end = matrix.elements.lower_bound({0,j+1});
             for(;it!=it_end;++it){
                 std::size_t jj = it->first[0];
-                if(vec.elements.find({jj,j}) != vec.elements.end()){
-                    result[jj] += it->second * vec.at({jj,j});
-                }
-            }
-        }
-        return result;
-    }
-}
-
-template<typename T, StorageOrder Order>
-std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>,Order>& matrix,const std::vector<std::complex<T>>& vec ){
-    if constexpr (Order == algebra::StorageOrder::RowMajor){
-             //The only way to change the state of a const object 
-    auto& mutableMatrix = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(matrix);
-   // Create a vector to store the result of matrix-vector multiplication
-    std::vector<std::complex<T>> result(matrix.numRows, 0);
-    //Check for the correctness of dimension
-    if(vec.size() != matrix.numRows){
-        std::cerr<<"Error dimension not coeirent"<<std::endl;
-        return result;
-    }
-    if (!matrix.isCompressed) {
-        mutableMatrix.compress();
-    }
-    // Iterate over the rows of the compressed matrix
-    for (std::size_t i = 0; i < matrix.numRows; ++i) {
-        std::complex<T> rowSum = std::complex<T>(0.0, 0.0);
-
-        // Compute the dot product between the current row of the matrix and the vector 'vec'
-        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
-            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
-            // Multiply the matrix element value with the corresponding vector element and accumulate
-            rowSum.real += mutableMatrix.compressedMatrix[i][j].second.real * vec[jj].real - mutableMatrix.compressedMatrix[i][j].second.imag*vec[jj].imag;
-            rowSum.imag += mutableMatrix.compressedMatrix[i][j].second.real * vec[jj].imag + mutableMatrix.compressedMatrix[i][j].second.imag * vec[jj].real;
-        }
-
-        // Assign the computed dot product to the corresponding index in the result vector
-        result[i] = rowSum;
-    }
-
-    return result;
-    }else if constexpr(Order == algebra::StorageOrder::ColumnMajor){
-             // Compress the matrix if it's not already compressed
-       //The only way to change the state of a const object 
-   // Create a vector to store the result of matrix-vector multiplication
-    std::vector<std::complex<T>> result(matrix.numRows, 0);
-    //Check for the correctness of dimension
-    if(vec.size() != matrix.numRows){
-        std::cerr<<"Error dimension not coeirent"<<std::endl;
-        return result;
-    }
-
-    for(std::size_t j=0;j<matrix.numCols;++j){
-        auto it = matrix.elements.lower_bound({0,j});
-        auto it_end = matrix.elements.lower_bound({0,j+1});
-        for(;it!=it_end;++it){
-            std::size_t jj = it->first[0];
-            result[jj].real += it->second.real* vec[jj].real - it->second.imag * vec[jj].imag;
-            result[jj].imag += it->second.real* vec[jj].imag + it->second.imag * vec[jj].real;      
-        }
-    }
-
-    return result;
-    }
-}
-
-template<typename T, StorageOrder Order>
-std::vector<std::complex<T>> operator*(const Matrix<std::complex<T>,Order>& matrix, const Matrix<std::complex<T>,Order>& vec){
-    if constexpr (Order == algebra::StorageOrder::RowMajor){
-             //The only way to change the state of a const object 
-    auto& mutableMatrix = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(matrix); 
-    auto& mutableVec = const_cast<Matrix<std::complex<T>, StorageOrder::RowMajor>&>(vec);
-    // Create a vector to store the result of matrix-vector multiplication
-    std::vector<std::complex<T>> result(matrix.numRows, 0);
-    //Check for the correctness of dimension
-    if(vec.numRows != matrix.numRows and vec.numCols!=1){
-        std::cerr<<"Error dimension not coeirent"<<std::endl;
-        return result;
-    }
-    if (!matrix.isCompressed) {
-        mutableMatrix.compress();
-    }
-    if(vec.isCompressed){
-        mutableVec.uncompresse();
-    }
-    // Iterate over the rows of the compressed matrix
-    for (std::size_t i = 0; i < matrix.numRows; ++i) {
-        std::complex<T> rowSum = std::complex<T> (0.0,0.0);
-
-        // Compute the dot product between the current row of the matrix and the vector 'vec'
-        for (std::size_t j=0; j< mutableMatrix.compressedMatrix[i].size(); ++j) {         // Value of the matrix element
-            std:: size_t jj = mutableMatrix.compressedMatrix[i][j].first;
-            // Multiply the matrix element value with the corresponding vector element and accumulate
-            //i'm using the vec that now is a type of sparse matrix in uncompressed format
-            //Since it is simpler find the corrisponding value and the searching operation cost less in a map than in a vector
-            if(mutableVec.elements.find({j,jj})!= mutableVec.elements.end()){
-            //rowSum += matrix.compressedMatrix[i][j].second * vec.elements.at({j,jj});
-              rowSum.real += mutableMatrix.compressedMatrix[i][j].second.real * mutableVec.elements.at({j,jj}).real - mutableMatrix.compressedMatrix[i][j].second.imag*mutableVec.elements.at({j,jj}).imag;
-              rowSum.imag += mutableMatrix.compressedMatrix[i][j].second.real * mutableVec.elements.at({j,jj}).imag + mutableMatrix.compressedMatrix[i][j].second.imag * mutableVec.elements.at({j,jj}).real;
-            }
-        }
-
-        // Assign the computed dot product to the corresponding index in the result vector
-        result[i] = rowSum;
-    }
-
-    return result;
-    }else if constexpr(Order == algebra::StorageOrder::ColumnMajor){
-        std::vector<std::complex<T>> result(matrix.numRows, 0);
-    //Check for the correctness of dimension
-    if(vec.numRows() != matrix.numRows and vec.numCols() !=1 ){
-        std::cerr<<"Error dimension not coeirent"<<std::endl;
-        return result;
-    }
-       for(std::size_t j=0;j<matrix.numCols;++j){
-            auto it = matrix.elements.lower_bound({0,j});
-            auto it_end = matrix.elements.lower_bound({0,j+1});
-            for(;it!=it_end;++it){
-                std::size_t jj = it->first[0];
-                if(vec.elements.find({jj,j}) != vec.elements.end()){
-                    result[jj].real += it->secon.real * vec.at({jj,j}).real - it->second.imag*vec.at({jj,j}).imag;
-                    result[jj].imag += it->secon.real * vec.at({jj,j}).imag + it->second.imag*vec.at({jj,j}).real;
+                if(mutableVec.elements.find({jj,0}) != mutableVec.elements.end()){
+                    result[jj] += it->second * mutableVec.at({jj,j});
                 }
             }
         }
