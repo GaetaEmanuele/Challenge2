@@ -133,14 +133,10 @@ namespace algebra{
             }
         }else{
             for(std::size_t i=0;i<numRows;++i){
-                auto it_b = elements.lower_bound({i,0});
-                auto it_e = elements.lower_bound({i+1,0});
                 for(std::size_t j=0;j<numCols;++j){
-                    auto it = std::find_if(it_b,it_e,
-                            [j](const std::pair<std::array<std::size_t,2>,T>& p) {
-                                return p.first[1] == j;
-                            });
-                    if(it != it_e){
+                    std::array<std::size_t,2> Key = {i,j};
+                    auto it = elements.find(Key);
+                    if(it != elements.cend()){
                         std::cout<<it->second;
                     }else{std::cout<<0;}
                 }

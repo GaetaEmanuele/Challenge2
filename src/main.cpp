@@ -87,7 +87,7 @@ int main() {
     std::vector<double> x =  A *a;
     chrono.stop();
     t = chrono.wallTime();
-    std::cout<<"The Matrix vector product requires: "<<t<<"micsec"<<std::endl;
+    std::cout<<"The Matrix vector product requires: "<<t<<"micsec"<<"RowMajor"<<std::endl;
     for(std::size_t i=0;i<131;++i){
         std::cout<<x[i];
     }
@@ -113,7 +113,11 @@ int main() {
     std::cout<<norm3;
     std::cout<<std::endl;
     std::cout<<"The reusult of the matrix*vector multiplication is :"<<std::endl;
+    chrono.start();
     x =  B *a;
+    chrono.stop();
+    std::cout<<std::endl;
+    std::cout<<"the mtrix vector multiplication requires "<<chrono.wallTime()<<" micsec"<<"ColumnMajor"<<std::endl;
     for(std::size_t i=0;i<131;++i){
         std::cout<<x[i];
     }
