@@ -152,8 +152,10 @@ namespace algebra{
     template<typename T>
     T Matrix<T,StorageOrder::ColumnMajor>::norm(const algebra:: Typenorm& norm_)const{
         if(norm_ == algebra::Typenorm::One){
+                //initialization of sum
                 T sum = static_cast<T>(0);
                 if(isCompressed){
+                    //accumulate method + lambda function allows to evaluate the sum for column
                     sum = std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
                                          [](const T& acc,const std::pair<std::size_t,T>&entry){
                                             return acc + std::abs(entry.second);
@@ -166,6 +168,8 @@ namespace algebra{
                     return sum;
                     }
                 }else{
+                    //since the Matrix is stored with Column Major order
+                    //i exctract the ith column with the map's method lower_bound
                     std::array<std::size_t,2> Key = {0,0};
                     auto it = elements.lower_bound(Key);
                     Key = {0,1};
@@ -188,9 +192,12 @@ namespace algebra{
                 }   
         }else if(norm_ == algebra::Typenorm::Infinity){
                 if(isCompressed){
+                //StorageOrder = ColumnMajor so i need an auxiliary vector to store
+                //the sum by row
                 std::vector<T> RowSum(numRows,static_cast<T>(0));
                 for(std::size_t i=0;i<numCols;++i){
                     for(std::size_t j=0;j<numRows;++j){
+                         //finds the lement (i,j)
                          auto it = std::find_if(compressedMatrix[i].begin(), compressedMatrix[i].end(),
                             [j](const std::pair<std::size_t, T>& p) {
                                 return p.first == j;
@@ -202,9 +209,11 @@ namespace algebra{
                 }
                 return *std::max_element(RowSum.cbegin(),RowSum.cend());
                 }else{
+                //initialization of the value;
                 T sum(static_cast<T>(0)),value;
                 value = sum;
                 for(std::size_t i=0;i<numRows;++i){
+                    //sum if the condition described by the lambda function is true
                     sum = std::accumulate(elements.cbegin(),elements.cend(),static_cast<T>(0),
                             [i](const T& acc, const std::pair<const std::array<size_t, 2>, T>& entry){
                                 auto index = entry.first;

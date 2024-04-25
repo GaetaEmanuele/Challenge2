@@ -159,13 +159,16 @@ namespace algebra {
     T Matrix<T,StorageOrder::RowMajor>::norm(const algebra:: Typenorm& norm_)const{
        if(norm_ == algebra::Typenorm::One){
             if(isCompressed){
+                //initialization
                 std::vector<T> ColumnSum(numCols,static_cast<T>(0));
                 for(std::size_t i=0;i<numRows;++i){
                     for(std::size_t j=0;j<numCols;++j){
+                         //find the element(i,j)
                          auto it = std::find_if(compressedMatrix[i].cbegin(), compressedMatrix[i].cend(),
                             [j](const std::pair<std::size_t, T>& p) {
                                 return p.first == j;
                             });
+                         //do the sum if and only if the value(i,j) was found
                          if (it!= compressedMatrix[i].cend()){
                             ColumnSum[j] += std::abs(it->second);
                          }
@@ -173,9 +176,11 @@ namespace algebra {
                 }
                 return *std::max_element(ColumnSum.cbegin(),ColumnSum.cend());
             }else{
+                //initialization
                 T sum(static_cast<T>(0)),value;
                 value = sum;
                 for(std::size_t i=0;i<numCols;++i){
+                    //do the sum if the condition is satisfies (if the corresponding value was found)
                     sum = std::accumulate(elements.cbegin(),elements.cend(),static_cast<T>(0),
                             [i](const T& acc, const std::pair<const std::array<size_t, 2>, T>& entry){
                                 auto index = entry.first;
@@ -191,6 +196,7 @@ namespace algebra {
        }else if(norm_ == algebra :: Typenorm::Infinity){
             T sum = static_cast<T>(0);
             if(isCompressed){
+               //sum of the first row when the elemet is found
                sum =  std::accumulate(compressedMatrix[0].cbegin(),compressedMatrix[0].cend(),static_cast<T>(0),
                [](const T& acc,const std::pair<std::size_t, T>& entry){
                 return acc + std::abs(entry.second);
@@ -204,6 +210,7 @@ namespace algebra {
                return sum;
             }else{
                 std::array<std::size_t,2> Key = {0,0};
+                //Order = RowMajor so i can exctract the ith row with low_bound
                 auto it = elements.lower_bound(Key);
                 Key = {1,0};
                 auto it_end = elements.lower_bound(Key);
