@@ -86,12 +86,40 @@ int main() {
     }
  
     algebra:: Matrix<double,algebra::StorageOrder::RowMajor> vec(131,1);
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
     for(std::size_t i=0;i<131;++i){
         vec(i,0) = 1.0;
     }
     std::cout<<std::endl;
+    std::cout<<"ROW MAJOR VECTOR "<<std::endl;
     std::cout<<"Matrix Column Vector moltupliucation:"<<std::endl;
+    chrono.start();
     std::vector<double> res = A*vec;
+    chrono.stop();
+    std::cout<<"The matrix vector multiplication requires: "<<chrono.wallTime()<<" micsec"<<std::endl;
+    std::cout<<std::endl;
+    for(std::size_t i=0;i<res.size();++i){
+        std::cout<<res[i];
+    }
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
+    //initialization of column vector with order ColumnMajor 
+    std::cout<<"COLUMN MAJOR VECTOR "<<std::endl;
+    algebra:: Matrix<double,algebra::StorageOrder::ColumnMajor> vec1(131,1);
+    for(std::size_t i=0;i<131;++i){
+        vec1(i,0) = 1.0;
+    }
+    std::cout<<"Matrix Column Vector moltupliucation:"<<std::endl;
+    chrono.start();
+    res = B*vec1;
+    chrono.stop();
+    std::cout<<"The matrix vector multiplication requires: "<<chrono.wallTime()<<" micsec"<<std::endl;
+    std::cout<<std::endl;
+    std::cout<<std::endl;
     for(std::size_t i=0;i<res.size();++i){
         std::cout<<res[i];
     }

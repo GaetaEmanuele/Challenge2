@@ -124,7 +124,8 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& ve
     }
     }
 }
-
+//When you do the multiplication between Matrix and vector the following implementation 
+//requires the fact that both matrix and vector are stored in the same order
 template<ScalarOrComplex T, StorageOrder Order>
 std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& vec){
     if constexpr (Order == algebra::StorageOrder::RowMajor){
@@ -184,21 +185,33 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& ve
     }
     //the vector for semplicity must be stored in RowMajor since it is 
     //a column vector
-    auto& mutableVec = const_cast<Matrix<T, StorageOrder::RowMajor>&>(vec);
+    auto& mutableVec = const_cast<Matrix<T, StorageOrder::ColumnMajor>&>(vec);
     if(mutableVec.isCompressed){
         mutableVec.uncompress();
     }
+    if(!matrix.isCompressed){   
        for(std::size_t j=0;j<matrix.numCols;++j){
             auto it = matrix.elements.lower_bound({0,j});
             auto it_end = matrix.elements.lower_bound({0,j+1});
             for(;it!=it_end;++it){
                 std::size_t jj = it->first[0];
                 if(mutableVec.elements.find({jj,0}) != mutableVec.elements.end()){
-                    result[jj] += it->second * mutableVec.at({jj,j});
+                    result[jj] += it->second * mutableVec.elements.at({jj,0});
                 }
             }
         }
         return result;
+    }else{
+        for(std::size_t j=0;j<matrix.numCols;++j){
+            for(std::size_t i=0;i<matrix.compressedMatrix[j].size();++i){
+                std::size_t ii=matrix.compressedMatrix[j][i].first;
+                if(mutableVec.elements.find({ii,0}) != mutableVec.elements.end()){
+                    result[ii] += matrix.compressedMatrix[j][i].second * mutableVec.elements.at({ii,0});
+                }
+            }
+            return result;
+        }
+    }
     }
 }
 
