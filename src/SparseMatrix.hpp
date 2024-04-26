@@ -4,7 +4,6 @@
 #include <map>
 #include <array>
 #include <vector>
-#include <initializer_list>  // For std::initializer_list
 #include <string>
 #include <algorithm>
 #include<utility>
@@ -18,11 +17,10 @@ namespace algebra {
 
     // Matrix class template for a sparse matrix using std::map for dynamic construction
     enum class Typenorm { One, Infinity,Frobenius };
-    template <typename T>
+    template <ScalarOrComplex T>
     class SparseMatrixBase {
     public:
         virtual ~SparseMatrixBase() = default;
-
         virtual T operator()(std::size_t row, std::size_t col) const = 0;
         virtual T& operator()(std::size_t row, std::size_t col) = 0;
         virtual T norm(const algebra:: Typenorm&)const=0;
@@ -33,19 +31,19 @@ namespace algebra {
     
     enum class StorageOrder { RowMajor, ColumnMajor };
     
-    template<typename T,StorageOrder Order>
+    template<ScalarOrComplex T,StorageOrder Order>
     class Matrix;
     
-    template <typename T, StorageOrder Order>
+    template <ScalarOrComplex T, StorageOrder Order>
     void read(Matrix<T, Order>& matrix, const std::string& file_name);
     
-    template <typename T,StorageOrder Order>
+    template <ScalarOrComplex T,StorageOrder Order>
     std::vector<T> operator*(const Matrix<T, Order>& matrix, const std::vector<T>& vec);
     
-    template<typename T, StorageOrder Order>
+    template<ScalarOrComplex T, StorageOrder Order>
     std::vector<T> operator*(const Matrix<T, Order>& matrix, const Matrix<T,Order>& vec);
   
-    template <typename T>
+    template <ScalarOrComplex T>
     class Matrix<T, StorageOrder::RowMajor> : public SparseMatrixBase<T> {
     private:
         std::map<std::array<std::size_t, 2>, T> elements;
@@ -57,7 +55,6 @@ namespace algebra {
     public:
         // Declaration of the class specification RowMajor
         Matrix(std::size_t nrow,std::size_t ncol);
-        Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList);
         bool is_compressed()const{return isCompressed;};
         T operator()(std::size_t row, std::size_t col) const override;
         void resize(std::size_t nrow,std::size_t ncol);
@@ -79,7 +76,7 @@ namespace algebra {
             return a[1] < b[1] || (a[1] == b[1] && a[0] < b[0]); 
         }
     };
-    template<typename T>
+    template<ScalarOrComplex T>
     class Matrix<T, StorageOrder::ColumnMajor> : public SparseMatrixBase<T> {
     private:
         std::map<std::array<std::size_t, 2>, T, ColumnMajorComparator> elements;
@@ -90,7 +87,6 @@ namespace algebra {
     public:
         // Declaration for colum major
         Matrix(std::size_t nrow,std::size_t ncol);
-        Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList);
         bool is_compressed()const{return isCompressed;};
         void resize(std::size_t nrow,std::size_t ncol);
         T operator()(std::size_t row, std::size_t col) const override;

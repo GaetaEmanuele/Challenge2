@@ -2,7 +2,7 @@
 
 namespace algebra {
 
-template<typename T,StorageOrder Order>
+template<ScalarOrComplex T,StorageOrder Order>
 void read(Matrix<T, Order>& matrix ,const std::string& file_name){
     std::ifstream file(file_name);
     if (!file.is_open()) {
@@ -48,7 +48,7 @@ void read(Matrix<T, Order>& matrix ,const std::string& file_name){
     file.close();
 }
 
-template<typename T, StorageOrder Order>
+template<ScalarOrComplex T, StorageOrder Order>
 std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& vec){
     if constexpr(Order == algebra::StorageOrder::RowMajor){
         // Create a vector to store the result of matrix-vector multiplication
@@ -125,7 +125,7 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix, const std::vector<T>& ve
     }
 }
 
-template<typename T, StorageOrder Order>
+template<ScalarOrComplex T, StorageOrder Order>
 std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& vec){
     if constexpr (Order == algebra::StorageOrder::RowMajor){
         std::vector<T> result(matrix.numRows,static_cast<T>(0));
@@ -166,8 +166,8 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& ve
                 //Compute Rowsum
                 for(;it != it_end;++it){
                     std::size_t j = it->first[1];
-                    if(mutableVec.elements.find({j,0})!=mutableVec.elements.end()){
-                        rowSum += it->second*mutableVec.elements.at({j,0});
+                    if(mutableVec.elements.find({j,0}) != mutableVec.elements.end()){
+                        rowSum += it->second * mutableVec.elements.at({j,0});
                     }
                 }
                 //assignment to the return value
@@ -175,7 +175,6 @@ std::vector<T> operator*(const Matrix<T,Order>& matrix,const Matrix<T,Order>& ve
             }
             return result;
         }
-        return result;
     }else if constexpr(Order == algebra::StorageOrder::ColumnMajor){
              std::vector<T> result(matrix.numRows, static_cast<T>(0));
     //Check for the correctness of dimension

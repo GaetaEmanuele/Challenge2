@@ -2,31 +2,11 @@
 
 namespace algebra{
 
-    template<typename T>
+    template<ScalarOrComplex T>
     Matrix<T,StorageOrder:: ColumnMajor>:: Matrix(std::size_t nrow,std::size_t ncol): numRows(nrow),numCols(ncol),isCompressed(false){}
 
-    template <typename T>
-    Matrix<T,StorageOrder::ColumnMajor>::Matrix(std::initializer_list<std::tuple<std::size_t, std::size_t, T>> initList)
-        : numRows(0), numCols(0), isCompressed(false) {
-        // Constructor with initializer list of non zero elem
-         for (const auto& tuple : initList) {
-                std::size_t row = std::get<0>(tuple);
-                std::size_t col = std::get<1>(tuple);
-                T value = std::get<2>(tuple);
-
-                // Create a key using the row and column indices
-                std::array<std::size_t, 2> key = {row, col};
-
-                // Insert the element into the map
-                elements[key] = value;
-
-                // Update the dimensions of the matrix
-                numRows = std::max(numRows, row + 1);
-                numCols = std::max(numCols, col + 1);
-            }
-    }
     // Const operator() to access elements in a compressed or uncompressed matrix
-    template <typename T>
+    template <ScalarOrComplex T>
     T Matrix<T,StorageOrder::ColumnMajor>::operator()(std::size_t row, std::size_t col) const {
         if (row < numRows && col < numCols) {
                 if (isCompressed) {
@@ -53,7 +33,7 @@ namespace algebra{
             }
     }
      // Non-const operator() to modify elements in a compressed or uncompressed matrix
-    template <typename T>
+    template <ScalarOrComplex T>
     T& Matrix<T,StorageOrder::ColumnMajor>::operator()(std::size_t row, std::size_t col) {
         if (isCompressed) {
         // Check if the element exists and is non-zero in the compressed matrix
@@ -72,7 +52,7 @@ namespace algebra{
         }
     }
     // Function to compress the sparse matrix representation (const-correct version)
-    template <typename T>
+    template <ScalarOrComplex T>
     void Matrix<T,StorageOrder::ColumnMajor>::compress(){
         //The change of form must be done only if the Matrix is not already compress
         if(!isCompressed){
@@ -94,7 +74,7 @@ namespace algebra{
     }
 
     // Function to uncompress the sparse matrix representation
-    template <typename T>
+    template <ScalarOrComplex T>
     void Matrix<T,StorageOrder::ColumnMajor>::uncompress() {
         if (!isCompressed) {
                 std::cerr << "Error: Matrix is not compressed. Cannot uncompress." << std::endl;
@@ -116,7 +96,7 @@ namespace algebra{
             isCompressed = false;
     }
     // Function to print the matrix (supports both compressed and uncompressed)
-    template <typename T>
+    template <ScalarOrComplex T>
     void Matrix<T,StorageOrder::ColumnMajor>::print() const {
         if(isCompressed){
             for(std::size_t i=0;i<numRows;++i){
@@ -145,7 +125,7 @@ namespace algebra{
         }
     }
     
-    template<typename T>
+    template<ScalarOrComplex T>
     T Matrix<T,StorageOrder::ColumnMajor>::norm(const algebra:: Typenorm& norm_)const{
         if(norm_ == algebra::Typenorm::One){
                 //initialization of sum
@@ -253,7 +233,7 @@ namespace algebra{
             }
             } 
 
-    template<typename T>
+    template<ScalarOrComplex T>
     void Matrix<T,StorageOrder::ColumnMajor>::resize(std::size_t nrow,std::size_t ncol){
             numRows =nrow;
             numCols = ncol;

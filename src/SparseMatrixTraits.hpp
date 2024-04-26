@@ -14,5 +14,10 @@ concept Complex = requires(T t) {
     { t.real() } -> Numeric;
     { t.imag() } -> Numeric;
 };
+
+//Now the type of the elements of the matrix will be or a real/integer value or also 
+//a complex value
+template<typename T>
+concept ScalarOrComplex = Numeric<T> || Complex<T>;
 }
 #endif /* SparseMatrixTraits_HPP */
