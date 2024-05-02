@@ -2,6 +2,9 @@
 this is the README file for the 2nd challege of PACS corse
 in the src folder there are the 5 files containing Declarations,implementation and test for the sparse Matrix. There is a file .mtx that is used for tested the class
 
+# How to install the code 
+on terminal you have to digit: git clone git@github.com:GaetaEmanuele/Challenge2.git
+
 # How run the code
 In the folder src there is a MakeFile that use a the macro PACS_ROOT.
 1. In case you do not have that variables before running the code on terminale you must digit export PACS_ROOT=complete_path_to_pacs-exampples_folder/Examples. for having the full path it is enought to go in our local repository pacs-examples/Examples and on terminal digits pwd
