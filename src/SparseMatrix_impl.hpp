@@ -217,7 +217,7 @@ namespace algebra {
                         sum += std::accumulate(compressedMatrix[i].cbegin(),compressedMatrix[i].cend(),static_cast<T>(0),[](const T& acc,const std::pair<std::size_t, T>& entry){
                             return acc + std::abs(entry.second*entry.second);});
                }
-               return sum;
+               return std::sqrt(sum);
                 }else{
                 std::array<std::size_t,2> Key = {0,0};
                 auto it = elements.lower_bound(Key);
@@ -234,7 +234,7 @@ namespace algebra {
                                       [](const T& acc,const std::pair<const std::array<size_t, 2>, T>& entry){return acc + std::abs(entry.second*entry.second);}
                                       );
                 }
-                return sum;
+                return std::sqrt(sum);
                 }
        }
     }
